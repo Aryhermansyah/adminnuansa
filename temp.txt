@@ -1,0 +1,1 @@
+{event.eventDate && format(new Date(event.eventDate), "EEEE, d MMMM yyyy", { locale: id })}

@@ -1,0 +1,1146 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
+import { 
+  Plus, ChevronLeft, ChevronRight, CalendarIcon, 
+  Users, MapPin, Clock, Filter, Search, 
+  AlertCircle, CheckCircle, Calendar as CalendarIcon2,
+  ArrowUpDown, RefreshCw, Phone, Wallet, Info, CircleDollarSign,
+  Eye, XCircle, CheckCheck, Circle
+} from "lucide-react"
+import { useRouter } from "next/navigation"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Calendar } from "@/components/ui/calendar"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { dbService } from "@/lib/db/db-service"
+import { useData } from "@/contexts/data-context"
+import { format, isSameDay, isSameMonth, isToday, parseISO, endOfMonth, addMonths, subMonths, startOfMonth, differenceInCalendarDays, differenceInDays, addDays } from "date-fns"
+import { id } from "date-fns/locale"
+import { cn } from "@/lib/utils"
+
+// Komponen alert informasi
+const InfoAlert = ({ children, variant = "info" }: { children: React.ReactNode, variant?: "info" | "warning" | "success" | "error" }) => {
+  const bgColor = {
+    info: "bg-blue-50 border-blue-200",
+    warning: "bg-yellow-50 border-yellow-200",
+    success: "bg-green-50 border-green-200",
+    error: "bg-red-50 border-red-200",
+  }
+  
+  const textColor = {
+    info: "text-blue-800",
+    warning: "text-yellow-800",
+    success: "text-green-800",
+    error: "text-red-800",
+  }
+  
+  const icon = {
+    info: <AlertCircle className="h-4 w-4 text-blue-500" />,
+    warning: <AlertCircle className="h-4 w-4 text-yellow-500" />,
+    success: <CheckCircle className="h-4 w-4 text-green-500" />,
+    error: <AlertCircle className="h-4 w-4 text-red-500" />,
+  }
+  
+  return (
+    <div className={`text-sm p-3 rounded-lg border ${bgColor[variant]}`}>
+      <div className="flex items-center gap-2">
+        {icon[variant]}
+        <div className={textColor[variant]}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+export default function JadwalPage() {
+  const [currentDate, setCurrentDate] = useState<Date>(new Date())
+  const [view, setView] = useState<"calendar" | "list" | "vendors">("calendar")
+  const [filterService, setFilterService] = useState("all")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const [filterVendor, setFilterVendor] = useState("all")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isAddingEvent, setIsAddingEvent] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  
+  const { events, vendors, refreshData, isLoading } = useData()
+  const router = useRouter()
+
+  // Fungsi untuk membandingkan tanggal dengan akurat (hanya tahun, bulan, tanggal)
+  const isSameDayStrict = (date1: Date, date2: Date) => {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    )
+  }
+
+  // Filter jadwal berdasarkan tanggal yang dipilih dan layanan
+  const filteredSchedules = useMemo(() => {
+    if (!events) return []
+    
+    // Konversi dulu ke Date untuk memastikan format tanggal yang konsisten
+    const filtered = events.filter((event) => {
+      if (!event.eventDate) {
+        return false;
+      }
+      
+      try {
+        // Pastikan kita bekerja dengan objek Date
+        const eventDate = new Date(event.eventDate);
+        
+        // Gunakan fungsi isSameDay dari date-fns untuk perbandingan tanggal yang akurat
+        const dateMatch = isSameDay(eventDate, currentDate);
+        
+        const serviceMatch = filterService === "all" || 
+          (event.services && event.services.some(service => service === filterService));
+          
+        const statusMatch = filterStatus === "all" || event.status === filterStatus;
+        
+        return dateMatch && serviceMatch && statusMatch;
+      } catch (error) {
+        console.error("Error comparing dates:", error);
+        return false;
+      }
+    });
+    
+    return filtered;
+  }, [events, currentDate, filterService, filterStatus]);
+
+  // Statistik Event
+  const getEventStats = () => {
+    if (!events) return { today: 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0 }
+    
+    return {
+      today: events.filter(event => {
+        const eventDate = new Date(event.eventDate)
+        return isToday(eventDate)
+      }).length,
+      pending: events.filter(event => event.status === "pending").length,
+      confirmed: events.filter(event => event.status === "confirmed").length,
+      completed: events.filter(event => event.status === "completed").length,
+      cancelled: events.filter(event => event.status === "cancelled").length
+    }
+  }
+  
+  const stats = getEventStats()
+
+  // Fungsi untuk mendapatkan tanggal dengan event
+  const getDaysWithEvents = (day: Date) => {
+    return events?.some((event) => {
+      const eventDate = new Date(event.eventDate)
+      return isSameDay(eventDate, day)
+    }) || false
+  }
+  
+  // Fungsi untuk menghitung jumlah event per tanggal
+  const getEventCountForDay = (day: Date) => {
+    return events?.filter(event => {
+      const eventDate = new Date(event.eventDate)
+      return isSameDay(eventDate, day)
+    }).length || 0
+  }
+
+  // Format currency
+  const formatRupiah = (amount: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+  
+  // Format tanggal
+  const formatDate = (date: Date) => {
+    return format(date, "EEEE, d MMMM yyyy", { locale: id })
+  }
+  
+  // Status styling helper
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-emerald-500';
+      case 'pending':
+        return 'bg-amber-500';
+      case 'completed':
+        return 'bg-blue-500';
+      case 'cancelled':
+        return 'bg-rose-500';
+      default:
+        return 'bg-gray-400';
+    }
+  }
+  
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />;
+      case 'pending':
+        return <Clock className="h-3.5 w-3.5 text-amber-500" />;
+      case 'completed':
+        return <CheckCheck className="h-3.5 w-3.5 text-blue-500" />;
+      case 'cancelled':
+        return <XCircle className="h-3.5 w-3.5 text-rose-500" />;
+      default:
+        return <Circle className="h-3.5 w-3.5 text-gray-400" />;
+    }
+  }
+  
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'Dikonfirmasi';
+      case 'pending':
+        return 'Menunggu';
+      case 'completed':
+        return 'Selesai';
+      case 'cancelled':
+        return 'Dibatalkan';
+      default:
+        return 'Tidak Diketahui';
+    }
+  }
+  
+  const getTimeLeft = (dateString: string) => {
+    const eventDate = parseISO(dateString);
+    const today = new Date();
+    const daysLeft = differenceInDays(eventDate, today);
+    
+    if (daysLeft < 0) return null;
+    if (daysLeft === 0) return 'Hari ini';
+    if (daysLeft === 1) return 'Besok';
+    if (daysLeft < 7) return `${daysLeft} hari lagi`;
+    if (daysLeft < 30) return `${Math.floor(daysLeft / 7)} minggu lagi`;
+    return `${Math.floor(daysLeft / 30)} bulan lagi`;
+  }
+  
+  // Reset ke hari ini
+  const handleSetToday = () => {
+    setCurrentDate(new Date())
+  }
+  
+  // Memuat data saat komponen dimount dan memastikan data selalu segar
+  useEffect(() => {
+    // Ambil data saat komponen pertama kali di-mount
+    refreshData()
+    
+    // Set interval untuk memperbarui data secara berkala setiap 30 detik
+    const intervalId = setInterval(() => {
+      refreshData()
+    }, 30000)
+    
+    return () => clearInterval(intervalId)
+  }, [refreshData])
+  
+  // Fungsi untuk memaksa refresh data
+  const handleForceRefresh = async () => {
+    try {
+      setIsRefreshing(true)
+      await refreshData(true)
+    } catch (error) {
+      console.error("Error refreshing data:", error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Refresh data dan hapus filter
+  const handleRefreshAndClearFilter = async () => {
+    setIsRefreshing(true);
+    setFilterService("all");
+    setFilterStatus("all");
+    setSearchTerm("");
+    
+    try {
+      await refreshData(true);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row justify-between gap-4 md:items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-pink-900">Jadwal</h1>
+          <p className="text-muted-foreground">Kelola jadwal dan kalender event</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRefreshAndClearFilter} className="border-pink-200">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh Data
+          </Button>
+          <Button variant="outline" onClick={handleSetToday} className="border-pink-200">
+            <Calendar className="mr-2 h-4 w-4" />
+            Hari Ini
+          </Button>
+          <Select
+            value={view}
+            onValueChange={(value: "calendar" | "list" | "vendors") => setView(value)}
+          >
+            <SelectTrigger className="w-[180px] border-pink-200">
+              <SelectValue placeholder="Pilih tampilan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="calendar">Kalender</SelectItem>
+              <SelectItem value="list">Daftar Acara</SelectItem>
+              <SelectItem value="vendors">Ketersediaan Vendor</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Tabs defaultValue="calendar" value={view} onValueChange={(v) => setView(v as "calendar" | "list" | "vendors")} className="space-y-4">
+        <TabsList className="bg-pink-100/50">
+          <TabsTrigger value="statistics" className="data-[state=active]:bg-white">
+            Ringkasan
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="data-[state=active]:bg-white">
+            Kalender Event
+          </TabsTrigger>
+          <TabsTrigger value="list" className="data-[state=active]:bg-white">
+            Daftar Jadwal
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="statistics" className="space-y-4">
+          <Card className="border-pink-100">
+            <CardHeader className="px-6 py-4">
+              <CardTitle className="text-lg font-medium">Statistik Event</CardTitle>
+              <CardDescription>Ringkasan jumlah dan status event</CardDescription>
+            </CardHeader>
+            <CardContent className="px-6 pb-4">
+              <div className="grid gap-4 md:grid-cols-5">
+                <Card className="bg-pink-50 border-pink-100">
+                  <CardContent className="flex flex-row items-center justify-between py-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Event Hari Ini</p>
+                      <h3 className="text-2xl font-bold text-pink-900">{stats.today}</h3>
+                    </div>
+                    <div className="rounded-full bg-pink-100 p-2">
+                      <CalendarIcon2 className="h-5 w-5 text-pink-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-pink-50 border-pink-100">
+                  <CardContent className="flex flex-row items-center justify-between py-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Event Pending</p>
+                      <h3 className="text-2xl font-bold text-pink-900">{stats.pending}</h3>
+                    </div>
+                    <div className="rounded-full bg-pink-100 p-2">
+                      <Clock className="h-5 w-5 text-pink-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-pink-50 border-pink-100">
+                  <CardContent className="flex flex-row items-center justify-between py-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Event Terkonfirmasi</p>
+                      <h3 className="text-2xl font-bold text-pink-900">{stats.confirmed}</h3>
+                    </div>
+                    <div className="rounded-full bg-pink-100 p-2">
+                      <CheckCircle className="h-5 w-5 text-pink-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-pink-50 border-pink-100">
+                  <CardContent className="flex flex-row items-center justify-between py-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Event Selesai</p>
+                      <h3 className="text-2xl font-bold text-pink-900">{stats.completed}</h3>
+                    </div>
+                    <div className="rounded-full bg-pink-100 p-2">
+                      <CheckCheck className="h-5 w-5 text-pink-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-pink-50 border-pink-100">
+                  <CardContent className="flex flex-row items-center justify-between py-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Event Dibatalkan</p>
+                      <h3 className="text-2xl font-bold text-pink-900">{stats.cancelled}</h3>
+                    </div>
+                    <div className="rounded-full bg-pink-100 p-2">
+                      <XCircle className="h-5 w-5 text-pink-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="calendar" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-[300px_1fr]">
+            <div className="space-y-4">
+              <Card className="border-pink-100">
+                <CardHeader className="py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Kalender</CardTitle>
+                      <CardDescription className="text-xs">
+                        {format(currentDate, 'MMMM yyyy', { locale: id })}
+                      </CardDescription>
+                    </div>
+                    <div className="flex space-x-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                        <span className="sr-only">Bulan sebelumnya</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                        <span className="sr-only">Bulan selanjutnya</span>
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 pb-3 px-3">
+                  <div className="grid grid-cols-7 gap-1 mb-1 text-center">
+                    {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((day, i) => (
+                      <div key={i} className="text-xs font-medium text-muted-foreground">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {/* Tambahkan hari kosong di awal bulan */}
+                    {Array.from({ length: startOfMonth(currentDate).getDay() === 0 ? 6 : startOfMonth(currentDate).getDay() - 1 }).map((_, i) => (
+                      <div key={`empty-start-${i}`} className="h-8 w-8"></div>
+                    ))}
+                    
+                    {/* Render tanggal dalam bulan */}
+                    {Array.from({ length: endOfMonth(currentDate).getDate() }).map((_, i) => {
+                      const dateItem = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
+                      const isCurrentMonth = isSameMonth(dateItem, currentDate);
+                      const isSelected = isSameDay(dateItem, currentDate);
+                      const isTodayDate = isToday(dateItem);
+                      
+                      // Count events on this day
+                      const dayEvents = events?.filter((event) => {
+                        if (!event.eventDate) return false;
+                        const eventDate = new Date(event.eventDate);
+                        return isSameDay(eventDate, dateItem);
+                      }) || [];
+                      
+                      // Show dots for different event statuses
+                      const confirmedEvents = dayEvents.filter(e => e.status === 'confirmed').length;
+                      const pendingEvents = dayEvents.filter(e => e.status === 'pending').length;
+                      const completedEvents = dayEvents.filter(e => e.status === 'completed').length;
+                      const cancelledEvents = dayEvents.filter(e => e.status === 'cancelled').length;
+                      
+                      return (
+                        <Button
+                          key={i}
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-8 w-8 p-0 font-normal aria-selected:opacity-100",
+                            isCurrentMonth ? "text-primary" : "text-muted-foreground opacity-30",
+                            isSelected && "bg-pink-100 text-pink-900 font-medium hover:bg-pink-100 hover:text-pink-900",
+                            isTodayDate && !isSelected && "bg-muted text-pink-900 font-medium",
+                            dayEvents.length > 0 && !isSelected && "border-b-2 border-pink-200 hover:border-pink-300"
+                          )}
+                          disabled={!isCurrentMonth}
+                          onClick={() => {
+                            // Buat objek Date baru dengan tanggal yang dipilih untuk menghindari referensi langsung
+                            const newDate = new Date(dateItem.getFullYear(), dateItem.getMonth(), dateItem.getDate());
+                            
+                            // Debugging
+                            const hasEvents = events?.filter(event => {
+                              if (!event.eventDate) return false;
+                              const eventDate = new Date(event.eventDate);
+                              const eventDateStr = eventDate.toISOString().split('T')[0];
+                              const newDateStr = newDate.toISOString().split('T')[0];
+                              return eventDateStr === newDateStr;
+                            }).length;
+                            
+                            // Set tanggal dengan membuat object baru
+                            setCurrentDate(newDate);
+                          }}
+                        >
+                          <time dateTime={dateItem.toISOString()}>{dateItem.getDate()}</time>
+                          {dayEvents.length > 0 && (
+                            <div className="absolute bottom-0.5 left-0 w-full flex justify-center gap-0.5">
+                              {confirmedEvents > 0 && (
+                                <div className="h-1 w-1 rounded-full bg-emerald-500"></div>
+                              )}
+                              {pendingEvents > 0 && (
+                                <div className="h-1 w-1 rounded-full bg-amber-500"></div>
+                              )}
+                              {completedEvents > 0 && (
+                                <div className="h-1 w-1 rounded-full bg-blue-500"></div>
+                              )}
+                              {cancelledEvents > 0 && (
+                                <div className="h-1 w-1 rounded-full bg-rose-500"></div>
+                              )}
+                            </div>
+                          )}
+                        </Button>
+                      );
+                    })}
+                    
+                    {/* Tambahkan hari kosong di akhir bulan untuk melengkapi grid */}
+                    {(() => {
+                      const lastDayOfMonth = endOfMonth(currentDate).getDay();
+                      const fillCount = lastDayOfMonth === 0 ? 0 : 7 - lastDayOfMonth;
+                      return Array.from({ length: fillCount }).map((_, i) => (
+                        <div key={`empty-end-${i}`} className="h-8 w-8"></div>
+                      ));
+                    })()}
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0 px-3 pb-3">
+                  <div className="mt-2 w-full">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                      <div className="flex items-center">
+                        <div className="h-2 w-2 rounded-full bg-emerald-500 mr-1.5"></div>
+                        <span>Dikonfirmasi</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="h-2 w-2 rounded-full bg-amber-500 mr-1.5"></div>
+                        <span>Menunggu</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="h-2 w-2 rounded-full bg-blue-500 mr-1.5"></div>
+                        <span>Selesai</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="h-2 w-2 rounded-full bg-rose-500 mr-1.5"></div>
+                        <span>Dibatalkan</span>
+                      </div>
+                  </div>
+                </div>
+                </CardFooter>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Filter</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium mb-1">Layanan</p>
+                  <Select value={filterService} onValueChange={setFilterService}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Semua Layanan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Layanan</SelectItem>
+                      <SelectItem value="Makeup">Makeup</SelectItem>
+                      <SelectItem value="Dekorasi">Dekorasi</SelectItem>
+                        <SelectItem value="Foto">Foto</SelectItem>
+                        <SelectItem value="Video">Video</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium mb-1">Status</p>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Semua Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="confirmed">Dikonfirmasi</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="completed">Selesai</SelectItem>
+                        <SelectItem value="cancelled">Dibatalkan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Status Database</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <Skeleton className="h-12 w-full" />
+                  ) : (
+                    <InfoAlert variant={events && events.length > 0 ? "success" : "info"}>
+                      {events && events.length > 0
+                        ? `Database berhasil dimuat dengan ${events.length} jadwal`
+                        : "Database siap. Belum ada jadwal tersimpan"}
+                    </InfoAlert>
+                  )}
+
+                  {events && events.length > 0 && !isLoading && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="rounded bg-pink-50 p-2">
+                        <p className="text-xs text-muted-foreground">Bulan Ini</p>
+                        <p className="text-lg font-bold text-pink-900">
+                          {events.filter(event => {
+                            const eventDate = new Date(event.eventDate)
+                            return isSameMonth(eventDate, new Date())
+                          }).length}
+                        </p>
+                      </div>
+                      <div className="rounded bg-green-50 p-2">
+                        <p className="text-xs text-muted-foreground">Selesai</p>
+                        <p className="text-lg font-bold text-green-700">
+                          {events.filter(event => event.status === "completed").length}
+                        </p>
+                      </div>
+                </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Ringkasan Status</CardTitle>
+                  <CardDescription className="text-xs">
+                    Terakhir diperbarui: {new Date().toLocaleTimeString('id-ID')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-5/6" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex flex-col p-2 bg-blue-50 rounded-md text-center">
+                          <span className="text-xs text-muted-foreground">Hari Ini</span>
+                          <span className="text-xl font-bold text-blue-600">{stats.today}</span>
+                        </div>
+                        <div className="flex flex-col p-2 bg-yellow-50 rounded-md text-center">
+                          <span className="text-xs text-muted-foreground">Pending</span>
+                          <span className="text-xl font-bold text-yellow-600">{stats.pending}</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="flex flex-col p-2 bg-green-50 rounded-md text-center">
+                          <span className="text-xs text-muted-foreground">Terkonfirmasi</span>
+                          <span className="text-lg font-bold text-green-600">{stats.confirmed}</span>
+                        </div>
+                        <div className="flex flex-col p-2 bg-emerald-50 rounded-md text-center">
+                          <span className="text-xs text-muted-foreground">Selesai</span>
+                          <span className="text-lg font-bold text-emerald-600">{stats.completed}</span>
+                        </div>
+                        <div className="flex flex-col p-2 bg-red-50 rounded-md text-center">
+                          <span className="text-xs text-muted-foreground">Batal</span>
+                          <span className="text-lg font-bold text-red-600">{stats.cancelled}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-3 justify-between items-start md:items-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-pink-900">
+                    {currentDate ? formatDate(currentDate) : "Semua Jadwal"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {currentDate ? (
+                      <>
+                        Jadwal pada tanggal {format(currentDate, "d MMMM yyyy", { locale: id })}
+                        <span className="text-xs text-pink-500 ml-2">
+                          {filteredSchedules.length > 0 
+                            ? `(${filteredSchedules.length} jadwal ditemukan)` 
+                            : "(Tidak ada jadwal pada tanggal ini)"}
+                        </span>
+                      </>
+                    ) : (
+                      "Menampilkan semua jadwal yang akan datang"
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <div className="w-full md:w-auto">
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="border-pink-200 h-9">
+                        <SelectValue placeholder="Semua Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="confirmed">Dikonfirmasi</SelectItem>
+                        <SelectItem value="pending">Menunggu</SelectItem>
+                        <SelectItem value="completed">Selesai</SelectItem>
+                        <SelectItem value="cancelled">Dibatalkan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-9 w-9 border-pink-200"
+                          onClick={() => handleRefreshAndClearFilter()}
+                          disabled={isRefreshing}
+                        >
+                          <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                          <span className="sr-only">Refresh data</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Refresh data & reset filter</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <Button
+                    size="sm"
+                    className="bg-pink-600 hover:bg-pink-700 h-9"
+                    asChild
+                  >
+                    <Link href="/jadwal/tambah">
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Tambah
+                    </Link>
+                  </Button>
+                </div>
+                          </div>
+
+              {isLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} className="border-pink-100">
+                      <CardHeader className="pb-2">
+                        <Skeleton className="h-5 w-3/4 mb-1" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                      </CardContent>
+                      <CardFooter className="pt-0">
+                        <Skeleton className="h-9 w-full" />
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredSchedules.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Calendar className="h-12 w-12 text-pink-300 mb-4" />
+                  <h3 className="text-xl font-semibold text-pink-900">Tidak ada jadwal</h3>
+                  <p className="text-muted-foreground mt-1 mb-4">
+                    Tidak ada jadwal untuk tanggal {formatDate(currentDate)}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="border-pink-200"
+                      onClick={handleRefreshAndClearFilter}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" /> 
+                      Refresh
+                    </Button>
+                    <Button 
+                      className="bg-pink-600 hover:bg-pink-700"
+                      onClick={() => router.push("/jadwal/manage-tim")}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Kelola Jadwal Tim
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredSchedules.map((event) => (
+                    <Card key={event.id} className={cn(
+                      "border-l-4 transition-all hover:shadow-md",
+                      event.status === "confirmed" && "border-l-emerald-500",
+                      event.status === "pending" && "border-l-amber-500",
+                      event.status === "completed" && "border-l-blue-500",
+                      event.status === "cancelled" && "border-l-rose-500",
+                    )}>
+                      <CardHeader className="pb-2">
+                        <div className="flex flex-col space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base line-clamp-1">{event.clientName}</CardTitle>
+                            <div className="flex items-center gap-1 text-xs font-medium">
+                              {getStatusIcon(event.status)}
+                              <span className={cn(
+                                event.status === "confirmed" && "text-emerald-600",
+                                event.status === "pending" && "text-amber-600",
+                                event.status === "completed" && "text-blue-600",
+                                event.status === "cancelled" && "text-rose-600"
+                              )}>
+                                {getStatusText(event.status)}
+                              </span>
+                            </div>
+                          </div>
+                          <CardDescription className="text-xs">
+                            <div className="text-sm text-gray-700">
+                              {event.eventDate && format(new Date(event.eventDate), "EEEE, d MMMM yyyy", { locale: id })}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {event.time}
+                            </div>
+                            {getTimeLeft(event.eventDate) && (
+                              <div className="text-xs mt-1">
+                                <Badge variant="outline" className="bg-pink-50 border-pink-200 text-pink-700 text-[10px]">
+                                  {getTimeLeft(event.eventDate)}
+                                </Badge>
+                              </div>
+                            )}
+                          </CardDescription>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2.5 text-sm">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-pink-600 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm line-clamp-2">{event.location}</span>
+                          </div>
+
+                          {/* Tampilkan phone jika ada */}
+                          {(event as any).phone && (
+                            <div className="flex items-start gap-2">
+                              <Phone className="h-4 w-4 text-pink-600 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm">{(event as any).phone}</span>
+                            </div>
+                          )}
+                          
+                          {event.budget && (
+                            <div className="flex items-start gap-2">
+                              <CircleDollarSign className="h-4 w-4 text-pink-600 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm font-medium">{formatRupiah(event.budget)}</span>
+                            </div>
+                          )}
+                          
+                          {event.services && event.services.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-3">
+                              {event.services.map((service) => (
+                                <Badge key={service} variant="outline" className="text-xs border-pink-200 text-pink-800 bg-pink-50">
+                                  {service}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                      <CardFooter className="pt-0">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full text-xs border-pink-200 text-pink-800 hover:bg-pink-50 transition-colors"
+                          asChild
+                        >
+                          <Link href={`/jadwal/${event.id}`} className="flex justify-center">
+                            <Eye className="h-3.5 w-3.5 mr-1.5" />
+                            Lihat Detail
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                      ))}
+                    </div>
+              )}
+                    </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="list" className="space-y-4">
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Cari nama klien atau lokasi..."
+                className="pl-8 border-pink-200 h-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+              <div className="flex gap-2">
+              <div className="w-[140px] flex-shrink-0">
+                <Select value={filterService} onValueChange={setFilterService}>
+                  <SelectTrigger className="border-pink-200 h-10">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Layanan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Layanan</SelectItem>
+                    <SelectItem value="Makeup">Makeup</SelectItem>
+                    <SelectItem value="Dekorasi">Dekorasi</SelectItem>
+                      <SelectItem value="Foto">Foto</SelectItem>
+                      <SelectItem value="Video">Video</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-[140px] flex-shrink-0">
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="border-pink-200 h-10">
+                      <ArrowUpDown className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="confirmed">Dikonfirmasi</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="completed">Selesai</SelectItem>
+                      <SelectItem value="cancelled">Dibatalkan</SelectItem>
+                  </SelectContent>
+                </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Card className="border-pink-100">
+            <CardHeader className="px-3 py-3">
+              <div className="flex justify-between items-center">
+                <div>
+              <CardTitle className="text-base">Daftar Pemesanan</CardTitle>
+                  <CardDescription className="text-xs">
+                    {isLoading 
+                      ? "Memuat data..." 
+                      : `${events?.length || 0} pemesanan total, ${events?.filter(e => e.status === "pending").length || 0} menunggu konfirmasi`
+                    }
+                  </CardDescription>
+                </div>
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-pink-600 hover:bg-pink-700"
+                >
+                  <Link href="/jadwal/tambah">
+                    <Plus className="mr-2 h-3.5 w-3.5" />
+                    Tambah
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="p-8 flex justify-center">
+                  <div className="animate-spin h-8 w-8 border-4 border-pink-600 rounded-full border-t-transparent"></div>
+                </div>
+              ) : (
+              <div className="overflow-x-auto">
+                <ScrollArea className="h-[calc(100vh-20rem)] md:h-auto">
+                  <div className="min-w-[800px]">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-pink-100 bg-pink-50/50">
+                          <th className="px-3 py-3 text-left text-xs font-medium text-pink-900 uppercase tracking-wider">
+                            Klien
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-pink-900 uppercase tracking-wider">
+                            Tanggal & Waktu
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-pink-900 uppercase tracking-wider">
+                            Lokasi
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-pink-900 uppercase tracking-wider">
+                            Layanan
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-pink-900 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-pink-900 uppercase tracking-wider">
+                            Aksi
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-pink-100">
+                          {events
+                            ?.filter(
+                              (event) =>
+                                searchTerm === "" ||
+                                event.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                event.location?.toLowerCase().includes(searchTerm.toLowerCase()),
+                            )
+                          .filter(
+                              (event) =>
+                                filterService === "all" || event.services?.some((service) => service === filterService),
+                          )
+                          .filter(
+                              (event) =>
+                                filterStatus === "all" || event.status === filterStatus
+                          )
+                            .map((event) => (
+                              <tr key={event.id} className="hover:bg-pink-50/50">
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                  <div className="text-sm font-medium text-pink-900">{event.clientName}</div>
+                                  <div className="text-xs text-muted-foreground">{event.type}</div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="text-sm text-gray-700">
+                                  {event.eventDate && format(new Date(event.eventDate), "EEEE, d MMMM yyyy", { locale: id })}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {event.time}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                  <div className="text-sm text-gray-700 truncate max-w-[150px]">{event.location}</div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="flex flex-wrap gap-1">
+                                    {event.services?.map((service, index) => (
+                                    <Badge key={index} variant="outline" className="border-pink-200 text-pink-800">
+                                      {service}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <Badge
+                                    variant={
+                                      event.status === "confirmed" ? "default" :
+                                      event.status === "pending" ? "secondary" :
+                                      event.status === "completed" ? "outline" : "destructive"
+                                    }
+                                  >
+                                    {event.status === "confirmed" ? "Dikonfirmasi" :
+                                     event.status === "pending" ? "Menunggu" :
+                                     event.status === "completed" ? "Selesai" : "Dibatalkan"}
+                                </Badge>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <Button variant="outline" size="sm" className="border-pink-200" asChild>
+                                    <Link href={`/jadwal/${event.id}`}>Detail</Link>
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          {(events?.length === 0 || events?.filter(
+                              (event) =>
+                                (searchTerm === "" ||
+                                event.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                event.location?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+                                (filterService === "all" || event.services?.some((service) => service === filterService)) &&
+                                (filterStatus === "all" || event.status === filterStatus)
+                            ).length === 0) && (
+                            <tr>
+                              <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
+                                <div className="flex flex-col items-center justify-center">
+                                  <CalendarIcon2 className="h-10 w-10 text-pink-200 mb-3" />
+                                  <p className="mb-2">Tidak ada data jadwal yang ditemukan</p>
+                                  <Button 
+                                    size="sm" 
+                                    className="mt-2 bg-pink-600 hover:bg-pink-700"
+                                    asChild
+                                  >
+                                    <Link href="/jadwal/tambah">
+                                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                                      Tambah Jadwal
+                                    </Link>
+                                </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                      </tbody>
+                    </table>
+                  </div>
+                </ScrollArea>
+              </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vendors" className="space-y-4">
+          <Card className="border-pink-100">
+            <CardHeader>
+              <CardTitle>Vendor Tersedia</CardTitle>
+              <CardDescription>Pilih vendor untuk pemesanan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {[1, 2, 3, 4].map(i => (
+                    <Card key={i}>
+                      <CardHeader>
+                        <Skeleton className="h-5 w-3/4 mb-2" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+              ) : vendors && vendors.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {vendors.map((vendor) => (
+                    <Card key={vendor.id} className="overflow-hidden border-pink-100">
+                      <div className="h-32 bg-gradient-to-r from-pink-200 to-pink-100 flex items-center justify-center">
+                        <div className="h-20 w-20 rounded-full bg-white flex items-center justify-center">
+                          <span className="text-2xl font-bold text-pink-600">{vendor.name?.charAt(0) || "V"}</span>
+                        </div>
+                      </div>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">{vendor.name}</CardTitle>
+                        <CardDescription>
+                          <Badge variant="outline" className="capitalize">
+                            {vendor.category || "Umum"}
+                          </Badge>
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="text-sm">
+                        <p className="text-muted-foreground mb-2 line-clamp-2">{vendor.description || "Tidak ada deskripsi"}</p>
+                        <p className="font-semibold text-pink-800">{formatRupiah(vendor.price || 0)}</p>
+                      </CardContent>
+                      <CardFooter>
+                        <Button variant="outline" size="sm" className="w-full border-pink-200" asChild>
+                          <Link href={`/vendors/${vendor.id}`}>Lihat Detail</Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">Belum ada vendor yang tersedia</p>
+                  <Button asChild className="bg-pink-600 hover:bg-pink-700">
+                    <Link href="/tim-vendor/tambah-vendor">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Tambah Vendor
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
