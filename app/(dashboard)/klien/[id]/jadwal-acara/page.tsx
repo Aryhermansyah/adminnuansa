@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-
+import type { SimplePageProps } from "@/lib/next-types"
 import { TambahJadwalMakeupClient } from "./client-component"
 
 // Komponen loading saat data sedang dimuat
@@ -16,11 +16,11 @@ function DataLoading() {
   )
 }
 
-// Konfigurasi dynamic rendering
+// Konfigurasi rendering
 export const dynamic = "force-dynamic"
 
-// Halaman utama tanpa anotasi tipe eksplisit untuk params
-export default async function TambahJadwalMakeupPage(props) {
+// Halaman server 
+export default function TambahJadwalMakeupPage(props: SimplePageProps) {
   const clientId = parseInt(props.params.id, 10)
   
   return (
