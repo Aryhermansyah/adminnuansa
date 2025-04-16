@@ -19,8 +19,8 @@ function DataLoading() {
 // Konfigurasi dynamic rendering
 export const dynamic = "force-dynamic"
 
-// Halaman utama
-export default function TambahJadwalMakeupPage({ params }: { params: { id: string } }) {
+// Halaman utama - tambahkan async untuk kompatibilitas dengan Next.js 15.3
+export default async function TambahJadwalMakeupPage({ params }: { params: { id: string } }) {
   const clientId = parseInt(params.id, 10)
   
   return (

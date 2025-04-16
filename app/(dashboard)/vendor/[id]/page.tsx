@@ -37,7 +37,7 @@ const vendorData = {
   ],
 }
 
-export default function VendorDetailPage({ params }: { params: { id: string } }) {
+export default async function VendorDetailPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState("info")
   const scale = useResponsiveScale()
 

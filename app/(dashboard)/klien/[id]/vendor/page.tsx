@@ -8,7 +8,7 @@ import { BookVendorClient } from "./client-component"
 // Konfigurasi dynamic rendering
 export const dynamic = "force-dynamic"
 
-export default function BookVendorPage({ params }: { params: { id: string } }) {
+export default async function BookVendorPage({ params }: { params: { id: string } }) {
   const clientId = Number(params.id)
   
   return (
