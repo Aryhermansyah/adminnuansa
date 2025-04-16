@@ -30,17 +30,8 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useData } from "@/contexts/data-context"
 
-// Untuk mendukung output: export
-export const dynamic = "force-static"
-
-// Fungsi generateStaticParams diperlukan untuk rute dinamis dengan output: export
-export async function generateStaticParams() {
-  // Dalam aplikasi produksi, Anda akan mengambil ID jadwal dari database
-  // Untuk sekarang, kita akan mengembalikan ID dummy
-  return Array.from({ length: 10 }, (_, i) => ({
-    id: String(i + 1),
-  }))
-}
+// Konfigurasi dynamic rendering
+export const dynamic = "force-dynamic"
 
 // Dummy event data (would come from API in real app)
 const eventData = {
