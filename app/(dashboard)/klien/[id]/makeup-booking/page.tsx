@@ -22,17 +22,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import type { Event } from "@/lib/db/db-service"
 import { DBService } from "@/lib/db/db-service"
 
-// Untuk mendukung output: export
-export const dynamic = "force-static"
-
-// Fungsi generateStaticParams diperlukan untuk rute dinamis dengan output: export
-export async function generateStaticParams() {
-  // Dalam aplikasi produksi, Anda akan mengambil ID klien dari database
-  // Untuk sekarang, kita akan mengembalikan ID dummy
-  return Array.from({ length: 10 }, (_, i) => ({
-    id: String(i + 1),
-  }))
-}
+// Konfigurasi dynamic rendering
+export const dynamic = "force-dynamic"
 
 export default function BookMakeupPage() {
   const router = useRouter()
