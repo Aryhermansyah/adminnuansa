@@ -16,17 +16,8 @@ function DataLoading() {
   )
 }
 
-// Untuk mendukung output: export
-export const dynamic = "force-static"
-
-// Fungsi untuk menghasilkan parameter statis untuk export statis
-export async function generateStaticParams() {
-  // Untuk keperluan static export, kita bisa mengembalikan array dummy client IDs
-  // yang akan digunakan untuk membuat halaman statis pada saat build
-  return Array.from({ length: 10 }, (_, i) => ({
-    id: String(i + 1),
-  }))
-}
+// Konfigurasi dynamic rendering
+export const dynamic = "force-dynamic"
 
 // Halaman utama
 export default function TambahJadwalMakeupPage({ params }: { params: { id: string } }) {
