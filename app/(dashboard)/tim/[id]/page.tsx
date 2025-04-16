@@ -71,7 +71,8 @@ const teamMemberData = {
 // Konfigurasi dynamic rendering
 export const dynamic = "force-dynamic"
 
-export default async function TeamMemberDetailPage({ params }: { params: { id: string } }) {
+// Client component tidak bisa async karena menggunakan hooks
+export default function TeamMemberDetailPage(props) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [member, setMember] = useState(teamMemberData)
@@ -81,9 +82,9 @@ export default async function TeamMemberDetailPage({ params }: { params: { id: s
 
   // Simulate fetching team member data
   useEffect(() => {
-    // In a real app, you would fetch team member data based on params.id
-    console.log("Fetching team member with ID:", params.id)
-  }, [params.id])
+    // In a real app, you would fetch team member data based on props.params.id
+    console.log("Fetching team member with ID:", props.params.id)
+  }, [props.params.id])
 
   const handleInputChange = (field: string, value: any) => {
     setEditedMember((prev) => ({ ...prev, [field]: value }))
@@ -102,7 +103,7 @@ export default async function TeamMemberDetailPage({ params }: { params: { id: s
 
   const handleDelete = () => {
     // In a real app, you would delete the team member from the database
-    console.log(`Deleting team member with ID: ${params.id}`)
+    console.log(`Deleting team member with ID: ${props.params.id}`)
     router.push("/tim")
   }
 

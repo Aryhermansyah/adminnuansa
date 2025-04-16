@@ -13,8 +13,8 @@ import { DataLoading } from "@/components/data-loading"
 // Konfigurasi dynamic rendering
 export const dynamic = "force-dynamic"
 
-export default async function ClientDetailPage({ params }: { params: { id: string } }) {
-  const clientId = Number(params.id)
+export default async function ClientDetailPage(props) {
+  const clientId = Number(props.params.id)
   
   return (
     <Suspense fallback={<DataLoading title="Memuat Data Klien" />}>

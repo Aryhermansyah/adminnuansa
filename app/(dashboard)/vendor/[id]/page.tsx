@@ -37,7 +37,8 @@ const vendorData = {
   ],
 }
 
-export default async function VendorDetailPage({ params }: { params: { id: string } }) {
+// Client component tidak bisa async karena menggunakan hooks
+export default function VendorDetailPage(props) {
   const [activeTab, setActiveTab] = useState("info")
   const scale = useResponsiveScale()
 

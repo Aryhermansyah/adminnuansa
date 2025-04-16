@@ -8,8 +8,8 @@ import { BookVendorClient } from "./client-component"
 // Konfigurasi dynamic rendering
 export const dynamic = "force-dynamic"
 
-export default async function BookVendorPage({ params }: { params: { id: string } }) {
-  const clientId = Number(params.id)
+export default async function BookVendorPage(props) {
+  const clientId = Number(props.params.id)
   
   return (
     <Suspense fallback={<DataLoading title="Memuat Data Vendor" />}>
