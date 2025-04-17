@@ -180,20 +180,31 @@ export default function TambahKlienPage() {
       <DBInitStatus />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-pink-100/50">
-          <TabsTrigger value="info" className="data-[state=active]:bg-white">
-            Informasi Dasar
-          </TabsTrigger>
-          <TabsTrigger value="design" className="data-[state=active]:bg-white">
-            Desain & Referensi
-          </TabsTrigger>
-          <TabsTrigger value="budget" className="data-[state=active]:bg-white">
-            Anggaran & Catatan
-          </TabsTrigger>
-        </TabsList>
+        <div className="border rounded-md border-pink-100 overflow-hidden bg-pink-50/30">
+          <TabsList className="w-full flex h-auto p-0 bg-transparent border-b border-pink-100">
+            <TabsTrigger 
+              value="info" 
+              className="flex-1 px-2 py-3 text-xs sm:text-sm rounded-none border-r border-pink-100 data-[state=active]:bg-white data-[state=active]:text-pink-600 data-[state=active]:border-b-0 data-[state=active]:border-pink-600 data-[state=active]:border-b-2 data-[state=active]:shadow-none"
+            >
+              Informasi Dasar
+            </TabsTrigger>
+            <TabsTrigger 
+              value="design" 
+              className="flex-1 px-2 py-3 text-xs sm:text-sm rounded-none border-r border-pink-100 data-[state=active]:bg-white data-[state=active]:text-pink-600 data-[state=active]:border-b-0 data-[state=active]:border-pink-600 data-[state=active]:border-b-2 data-[state=active]:shadow-none"
+            >
+              Desain & Referensi
+            </TabsTrigger>
+            <TabsTrigger 
+              value="budget" 
+              className="flex-1 px-2 py-3 text-xs sm:text-sm rounded-none data-[state=active]:bg-white data-[state=active]:text-pink-600 data-[state=active]:border-b-0 data-[state=active]:border-pink-600 data-[state=active]:border-b-2 data-[state=active]:shadow-none"
+            >
+              Anggaran & Catatan
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <form onSubmit={handleSubmit}>
-          <TabsContent value="info" className="space-y-4">
+          <TabsContent value="info" className="space-y-4 p-0 sm:p-4 bg-white border border-pink-100 rounded-md">
             <div className="grid gap-6 md:grid-cols-2">
               <Card className="border-pink-100">
                 <CardHeader>
@@ -429,7 +440,7 @@ export default function TambahKlienPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="design" className="space-y-4">
+          <TabsContent value="design" className="space-y-4 p-0 sm:p-4 bg-white border border-pink-100 rounded-md">
             <div className="grid gap-6 md:grid-cols-2">
               <Card className="border-pink-100">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -550,7 +561,7 @@ export default function TambahKlienPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="budget" className="space-y-4">
+          <TabsContent value="budget" className="space-y-4 p-0 sm:p-4 bg-white border border-pink-100 rounded-md">
             <Card className="border-pink-100">
               <CardHeader>
                 <CardTitle>Anggaran & Preferensi</CardTitle>

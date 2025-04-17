@@ -28,8 +28,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main content */}
-      <div className="md:pl-64 pb-20 md:pb-0 min-h-screen bg-gray-50">
-        <main className="p-4 md:p-6 max-w-6xl mx-auto">{children}</main>
+      <div className="md:pl-64 pb-20 md:pb-0 min-h-screen bg-gray-50 overflow-x-hidden">
+        <main className="p-4 md:p-6 max-w-6xl mx-auto w-full overflow-x-hidden">{children}</main>
         <footer className="p-4 text-center text-xs text-muted-foreground mt-8 mb-20 md:mb-0">
           <div className="flex justify-center items-center gap-2">
             <RealTimeClock />

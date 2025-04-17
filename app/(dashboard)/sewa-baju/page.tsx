@@ -160,7 +160,7 @@ const dressCollection = [
 ]
 
 export default function SewaBajuPage() {
-  const { clients, loading, error, refreshData } = useData()
+  const { clients, isLoading: loading, error, refreshData } = useData()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [activeTab, setActiveTab] = useState("rentals")
@@ -209,7 +209,7 @@ export default function SewaBajuPage() {
   })
 
   // Format tanggal
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("id-ID", {
       day: "numeric",
       month: "long",
@@ -218,7 +218,7 @@ export default function SewaBajuPage() {
   }
 
   // Format currency
-  const formatRupiah = (amount) => {
+  const formatRupiah = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
@@ -229,21 +229,21 @@ export default function SewaBajuPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-pink-900">Sewa Baju</h1>
-          <p className="text-sm text-muted-foreground">Kelola penyewaan baju dan koleksi</p>
+          <h1 className="text-lg md:text-xl lg:text-2xl font-bold tracking-tight text-pink-900">Sewa Baju</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">Kelola penyewaan baju dan koleksi</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button asChild className="bg-pink-600 hover:bg-pink-700 flex-1 sm:flex-none">
+          <Button asChild className="bg-pink-600 hover:bg-pink-700 h-8 md:h-10 text-xs md:text-sm flex-1 sm:flex-none">
             <Link href="/sewa-baju/tambah">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
               Sewa Baru
             </Link>
           </Button>
-          <Button asChild variant="outline" className="border-pink-200 flex-1 sm:flex-none">
+          <Button asChild variant="outline" className="border-pink-200 h-8 md:h-10 text-xs md:text-sm flex-1 sm:flex-none">
             <Link href="/sewa-baju/tambah-koleksi">
-              <Shirt className="mr-2 h-4 w-4" />
+              <Shirt className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4" />
               Tambah Koleksi
             </Link>
           </Button>
@@ -251,33 +251,33 @@ export default function SewaBajuPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-pink-100/50">
-          <TabsTrigger value="rentals" className="data-[state=active]:bg-white">
+        <TabsList className="bg-pink-100/50 w-full grid grid-cols-3 gap-0 overflow-hidden">
+          <TabsTrigger value="rentals" className="data-[state=active]:bg-white text-xs md:text-sm py-1 px-1 md:py-2 md:px-3">
             Penyewaan
           </TabsTrigger>
-          <TabsTrigger value="collection" className="data-[state=active]:bg-white">
+          <TabsTrigger value="collection" className="data-[state=active]:bg-white text-xs md:text-sm py-1 px-1 md:py-2 md:px-3">
             Koleksi Baju
           </TabsTrigger>
-          <TabsTrigger value="calendar" className="data-[state=active]:bg-white">
+          <TabsTrigger value="calendar" className="data-[state=active]:bg-white text-xs md:text-sm py-1 px-1 md:py-2 md:px-3">
             Kalender
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="rentals" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Cari nama klien atau kode baju..."
-                className="pl-8 mobile-input w-full"
+                className="pl-8 w-full h-8 md:h-10 text-xs md:text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="w-full sm:w-48">
               <select
-                className="w-full h-10 rounded-md border border-pink-200 bg-white px-3 py-2 text-sm"
+                className="w-full h-8 md:h-10 rounded-md border border-pink-200 bg-white px-2 md:px-3 py-1 md:py-2 text-xs md:text-sm"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -297,38 +297,38 @@ export default function SewaBajuPage() {
                     <div className="p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium text-pink-900">{rental.clientName}</h3>
+                          <h3 className="font-medium text-sm md:text-base text-pink-900">{rental.clientName}</h3>
                           <div className="flex items-center mt-1">
-                            <Barcode className="h-4 w-4 mr-1 text-pink-600" />
-                            <span className="text-sm font-medium">{rental.dressCode}</span>
+                            <Barcode className="h-3 w-3 md:h-4 md:w-4 mr-1 text-pink-600" />
+                            <span className="text-xs md:text-sm font-medium">{rental.dressCode}</span>
                           </div>
-                          <p className="text-sm mt-1">{rental.dressName}</p>
+                          <p className="text-xs md:text-sm mt-1">{rental.dressName}</p>
                         </div>
                         <Badge
                           className={
                             rental.status === "Disewa"
-                              ? "bg-blue-100 text-blue-800"
+                              ? "bg-blue-100 text-blue-800 text-[10px] md:text-xs px-1.5 py-0.5"
                               : rental.status === "Dikembalikan"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
+                                ? "bg-green-100 text-green-800 text-[10px] md:text-xs px-1.5 py-0.5"
+                                : "bg-red-100 text-red-800 text-[10px] md:text-xs px-1.5 py-0.5"
                           }
                         >
                           {rental.status}
                         </Badge>
                       </div>
 
-                      <div className="mt-3 flex items-center justify-between text-sm">
+                      <div className="mt-2 md:mt-3 flex flex-col sm:flex-row gap-1 sm:gap-0 sm:items-center sm:justify-between text-xs md:text-sm">
                         <div className="flex items-center">
-                          <ArrowRight className="h-4 w-4 mr-1 text-pink-600" />
+                          <ArrowRight className="h-3 w-3 md:h-4 md:w-4 mr-1 text-pink-600" />
                           <span>Sewa: {formatDate(rental.rentDate)}</span>
                         </div>
                         <div className="flex items-center">
-                          <ArrowLeft className="h-4 w-4 mr-1 text-pink-600" />
+                          <ArrowLeft className="h-3 w-3 md:h-4 md:w-4 mr-1 text-pink-600" />
                           <span>Kembali: {formatDate(rental.returnDate)}</span>
                         </div>
                       </div>
 
-                      <div className="mt-2 text-sm">
+                      <div className="mt-2 text-xs md:text-sm">
                         <div className="flex justify-between">
                           <span className="font-medium">Harga Sewa:</span>
                           <span>{formatRupiah(rental.price)}</span>
@@ -340,14 +340,14 @@ export default function SewaBajuPage() {
                       </div>
 
                       {rental.notes && (
-                        <div className="mt-2 text-xs text-muted-foreground">
+                        <div className="mt-2 text-[10px] md:text-xs text-muted-foreground">
                           <p className="font-medium">Catatan:</p>
                           <p>{rental.notes}</p>
                         </div>
                       )}
 
-                      <div className="mt-3 flex justify-end">
-                        <Button variant="outline" size="sm" className="border-pink-200" asChild>
+                      <div className="mt-2 md:mt-3 flex justify-end">
+                        <Button variant="outline" size="sm" className="border-pink-200 h-7 md:h-8 text-xs" asChild>
                           <Link href={`/sewa-baju/${rental.id}`}>Detail</Link>
                         </Button>
                       </div>
@@ -371,13 +371,13 @@ export default function SewaBajuPage() {
         </TabsContent>
 
         <TabsContent value="collection" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 md:gap-4">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Cari nama atau kode baju..."
-                className="pl-8 mobile-input w-full"
+                className="pl-8 w-full h-8 md:h-10 text-xs md:text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -398,10 +398,10 @@ export default function SewaBajuPage() {
                       <Badge
                         className={
                           dress.status === "Tersedia"
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-green-100 text-green-800 text-[10px] md:text-xs px-1.5 py-0.5"
                             : dress.status === "Disewa"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              ? "bg-blue-100 text-blue-800 text-[10px] md:text-xs px-1.5 py-0.5"
+                              : "bg-yellow-100 text-yellow-800 text-[10px] md:text-xs px-1.5 py-0.5"
                         }
                       >
                         {dress.status}
@@ -415,22 +415,22 @@ export default function SewaBajuPage() {
                     <div className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-80 px-2 py-1">
                       <div className="flex flex-wrap gap-1 justify-center">
                         {dress.size.map((s) => (
-                          <Badge key={s} className="bg-pink-100 text-pink-800 text-xs">
+                          <Badge key={s} className="bg-pink-100 text-pink-800 text-[9px] md:text-xs px-1 py-0">
                             {s}
                           </Badge>
                         ))}
                       </div>
                     </div>
                   </div>
-                  <CardContent className="p-3">
-                    <h3 className="font-medium text-pink-900 truncate">{dress.name}</h3>
-                    <p className="text-xs text-muted-foreground">{dress.category}</p>
+                  <CardContent className="p-2 md:p-3">
+                    <h3 className="font-medium text-sm md:text-base text-pink-900 truncate">{dress.name}</h3>
+                    <p className="text-[10px] md:text-xs text-muted-foreground">{dress.category}</p>
 
-                    <div className="mt-2 pt-2 border-t border-dashed border-pink-100">
-                      <h4 className="text-xs font-semibold text-pink-900 mb-1">Ukuran Detail:</h4>
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <div className="mt-1 md:mt-2 pt-1 md:pt-2 border-t border-dashed border-pink-100">
+                      <h4 className="text-[10px] md:text-xs font-semibold text-pink-900 mb-0.5 md:mb-1">Ukuran Detail:</h4>
+                      <div className="grid grid-cols-2 gap-x-1 md:gap-x-2 gap-y-0.5 md:gap-y-1">
                         {dress.measurements && Object.entries(dress.measurements).map(([key, value]) => (
-                          <div key={key} className="text-xs">
+                          <div key={key} className="text-[9px] md:text-xs">
                             <span className="capitalize">{key}:</span> <span className="font-medium">{value}</span>
                           </div>
                         ))}
@@ -438,19 +438,19 @@ export default function SewaBajuPage() {
                     </div>
 
                     {dress.fittingNotes && (
-                      <div className="mt-2 text-xs">
-                        <h4 className="font-semibold text-pink-900 mb-1">Catatan Fitting:</h4>
-                        <p className="text-gray-600 italic text-xs">{dress.fittingNotes}</p>
+                      <div className="mt-1 md:mt-2 text-[9px] md:text-xs">
+                        <h4 className="font-semibold text-pink-900 mb-0.5 md:mb-1">Catatan Fitting:</h4>
+                        <p className="text-gray-600 italic text-[9px] md:text-xs">{dress.fittingNotes}</p>
                       </div>
                     )}
 
-                    <div className="mt-3 flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Harga Sewa:</span>
-                      <p className="font-medium text-pink-900">{formatRupiah(dress.price)}</p>
+                    <div className="mt-2 md:mt-3 flex justify-between items-center">
+                      <span className="text-[9px] md:text-xs text-muted-foreground">Harga Sewa:</span>
+                      <p className="font-medium text-xs md:text-sm text-pink-900">{formatRupiah(dress.price)}</p>
                     </div>
 
-                    <div className="mt-3 flex justify-end">
-                      <Button variant="outline" size="sm" className="border-pink-200" asChild>
+                    <div className="mt-2 md:mt-3 flex justify-end">
+                      <Button variant="outline" size="sm" className="border-pink-200 h-7 md:h-8 text-xs" asChild>
                         <Link href={`/sewa-baju/koleksi/${dress.id}`}>Detail</Link>
                       </Button>
                     </div>
@@ -474,18 +474,18 @@ export default function SewaBajuPage() {
 
         <TabsContent value="calendar" className="space-y-4">
           <Card className="border-pink-100">
-            <CardHeader>
-              <CardTitle>Kalender Penyewaan</CardTitle>
-              <CardDescription>Jadwal penyewaan dan pengembalian baju</CardDescription>
+            <CardHeader className="px-3 md:px-4 py-2 md:py-3">
+              <CardTitle className="text-sm md:text-base">Kalender Penyewaan</CardTitle>
+              <CardDescription className="text-[10px] md:text-xs">Jadwal penyewaan dan pengembalian baju</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Clock className="h-12 w-12 mx-auto text-pink-300 mb-4" />
-                <h3 className="text-lg font-medium text-pink-900 mb-2">Kalender Penyewaan</h3>
-                <p className="text-muted-foreground mb-4">
+            <CardContent className="px-3 md:px-4 py-4 md:py-8">
+              <div className="text-center">
+                <Clock className="h-10 w-10 md:h-12 md:w-12 mx-auto text-pink-300 mb-3 md:mb-4" />
+                <h3 className="text-base md:text-lg font-medium text-pink-900 mb-1 md:mb-2">Kalender Penyewaan</h3>
+                <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
                   Fitur kalender penyewaan sedang dalam pengembangan. Segera hadir!
                 </p>
-                <Button className="bg-pink-600 hover:bg-pink-700" asChild>
+                <Button className="bg-pink-600 hover:bg-pink-700 h-8 md:h-10 text-xs md:text-sm" asChild>
                   <Link href="/sewa-baju/tambah">Tambah Penyewaan Baru</Link>
                 </Button>
               </div>
