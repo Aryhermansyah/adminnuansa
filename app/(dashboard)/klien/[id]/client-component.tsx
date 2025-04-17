@@ -467,22 +467,45 @@ export function ClientDetailClient({ clientId }: { clientId: number }) {
   
   // Handle perubahan input tenda
   const handleTendaChange = (field: string, value: string) => {
-    setTendaData(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    setTendaData(prev => {
+      const updatedData = {
+        ...prev,
+        [field]: value
+      }
+      
+      // Autosave jika semua field utama sudah diisi
+      if (updatedData.panjang && updatedData.lebar && updatedData.jenis && 
+          (field === 'panjang' || field === 'lebar' || field === 'jenis')) {
+        
+        // Clear previous timeout
+        if (saveTimeout) {
+          clearTimeout(saveTimeout)
+        }
+        
+        // Set new timeout for auto-save
+        const timeout = setTimeout(() => {
+          saveTendaData(true) // true = autosave
+        }, 2000)
+        
+        setSaveTimeout(timeout)
+      }
+      
+      return updatedData
+    })
   }
   
   // Fungsi untuk menyimpan data tenda
-  const saveTendaData = async () => {
+  const saveTendaData = async (isAutoSave = false) => {
     try {
       // Validasi input
       if (!tendaData.panjang || !tendaData.lebar || !tendaData.jenis) {
-        toast({
-          title: "Input tidak lengkap",
-          description: "Mohon lengkapi data panjang, lebar, dan jenis tenda",
-          variant: "destructive",
-        })
+        if (!isAutoSave) { // Tampilkan pesan error hanya jika bukan autosave
+          toast({
+            title: "Input tidak lengkap",
+            description: "Mohon lengkapi data panjang, lebar, dan jenis tenda",
+            variant: "destructive",
+          })
+        }
         return
       }
       
@@ -517,9 +540,10 @@ export function ClientDetailClient({ clientId }: { clientId: number }) {
       })
       
       toast({
-        title: "Data tenda tersimpan",
-        description: "Data ukuran tenda berhasil ditambahkan",
+        title: isAutoSave ? "Data tersimpan otomatis" : "Data tenda tersimpan",
+        description: "Data ukuran tenda berhasil " + (isAutoSave ? "disimpan otomatis" : "ditambahkan"),
         variant: "default",
+        duration: isAutoSave ? 1500 : 3000,
       })
     } catch (error) {
       console.error("Error saving tenda data:", error)
@@ -1486,7 +1510,7 @@ export function ClientDetailClient({ clientId }: { clientId: number }) {
       </div>
 
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
+        <TabsList className="w-full flex overflow-x-auto pb-1 no-scrollbar">
           <TabsTrigger value="info">Informasi Klien</TabsTrigger>
           <TabsTrigger value="events">Make Up Freelance</TabsTrigger>
           <TabsTrigger value="vendors">Vendor</TabsTrigger>
