@@ -1518,15 +1518,17 @@ export function ClientDetailClient({ clientId }: { clientId: number }) {
             paddingBottom: "4px",
             WebkitOverflowScrolling: "touch",
             msOverflowStyle: "none",
-            scrollbarWidth: "none"
+            scrollbarWidth: "none",
+            whiteSpace: "nowrap",
+            flexWrap: "nowrap"
           }}
-          className="w-full flex overflow-x-auto pb-1 no-scrollbar"
+          className="tabs-scroll w-full overflow-x-auto no-scrollbar"
         >
-          <TabsTrigger value="info">Informasi Klien</TabsTrigger>
-          <TabsTrigger value="events">Make Up Freelance</TabsTrigger>
-          <TabsTrigger value="vendors">Vendor</TabsTrigger>
-          <TabsTrigger value="design">Detail Acara</TabsTrigger>
-          <TabsTrigger value="keuangan">Keuangan</TabsTrigger>
+          <TabsTrigger value="info" className="min-w-max flex-shrink-0">Informasi Klien</TabsTrigger>
+          <TabsTrigger value="events" className="min-w-max flex-shrink-0">Make Up Freelance</TabsTrigger>
+          <TabsTrigger value="vendors" className="min-w-max flex-shrink-0">Vendor</TabsTrigger>
+          <TabsTrigger value="design" className="min-w-max flex-shrink-0">Detail Acara</TabsTrigger>
+          <TabsTrigger value="keuangan" className="min-w-max flex-shrink-0">Keuangan</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="space-y-4">
