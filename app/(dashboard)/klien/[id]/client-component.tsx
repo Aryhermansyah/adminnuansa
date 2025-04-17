@@ -1510,7 +1510,18 @@ export function ClientDetailClient({ clientId }: { clientId: number }) {
       </div>
 
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="w-full flex overflow-x-auto pb-1 no-scrollbar">
+        <TabsList 
+          style={{
+            width: "100%", 
+            display: "flex", 
+            overflowX: "auto", 
+            paddingBottom: "4px",
+            WebkitOverflowScrolling: "touch",
+            msOverflowStyle: "none",
+            scrollbarWidth: "none"
+          }}
+          className="w-full flex overflow-x-auto pb-1 no-scrollbar"
+        >
           <TabsTrigger value="info">Informasi Klien</TabsTrigger>
           <TabsTrigger value="events">Make Up Freelance</TabsTrigger>
           <TabsTrigger value="vendors">Vendor</TabsTrigger>
