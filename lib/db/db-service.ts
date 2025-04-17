@@ -37,6 +37,11 @@ interface NuansaWeddingDB extends DBSchema {
     value: VendorBooking
     indexes: { "by-client": number; "by-vendor": number; "by-date": string }
   }
+  tasks: {
+    key: number
+    value: any
+    indexes: { "by-date": string }
+  }
 }
 
 // Define the data models
@@ -168,7 +173,7 @@ export interface VendorBooking extends BaseModel {
 // Check if we're in a browser environment
 const isBrowser = typeof window !== "undefined" && typeof window.indexedDB !== "undefined"
 
-export type StoreNames = keyof NuansaWeddingDB
+export type StoreNames = keyof NuansaWeddingDB | string
 
 // Database service class
 export class DBService {
@@ -179,7 +184,7 @@ export class DBService {
     // Only initialize IndexedDB in browser environments
     if (isBrowser) {
       try {
-        this.dbPromise = openDB<NuansaWeddingDB>("nuansa-wedding-db", 3, {
+        this.dbPromise = openDB<NuansaWeddingDB>("nuansa-wedding-db", 4, {
           upgrade(db, oldVersion, newVersion) {
             console.log(`Upgrading database from version ${oldVersion} to ${newVersion}`);
             
@@ -237,6 +242,17 @@ export class DBService {
               console.log("Performing version 3 upgrades");
               // Add any version 3 specific upgrades here if needed
             }
+            
+            // Additional upgrades for version 4
+            if (oldVersion < 4) {
+              console.log("Performing version 4 upgrades");
+              // Add tasks store
+              if (!db.objectStoreNames.contains("tasks")) {
+                const tasksStore = db.createObjectStore("tasks", { keyPath: "id", autoIncrement: true })
+                tasksStore.createIndex("by-date", "date")
+                console.log("Created tasks store");
+              }
+            }
           }
         });
       } catch (error) {
@@ -286,7 +302,7 @@ export class DBService {
     if (!isBrowser) return []
     this.checkBrowser()
     const db = await this.dbPromise!
-    const result = await db.getAll(storeName as any)
+    const result = await db.getAll(storeName)
     return result as unknown as T[]
   }
 
@@ -294,7 +310,7 @@ export class DBService {
     if (!isBrowser) return undefined
     this.checkBrowser()
     const db = await this.dbPromise!
-    const result = await db.get(storeName as any, id as IDBValidKey)
+    const result = await db.get(storeName, id)
     return result as unknown as T | undefined
   }
 
@@ -324,7 +340,7 @@ export class DBService {
       
       try {
         // Tambahkan data ke store
-        const id = await db.add(storeName as any, itemToAdd as any);
+        const id = await db.add(storeName, itemToAdd);
         console.log(`Added item to ${storeName} with ID:`, id);
         return typeof id === 'number' ? id : parseInt(String(id), 10) || -1;
       } catch (dbError) {
@@ -345,13 +361,14 @@ export class DBService {
 
     item.updatedAt = timestamp
 
-    return db.put(storeName as any, item as any)
+    const id = await db.put(storeName, item)
+    return typeof id === 'number' ? id : parseInt(String(id), 10) || -1
   }
 
   async delete(storeName: StoreNames, id: number): Promise<void> {
     this.checkBrowser()
     const db = await this.dbPromise!
-    await db.delete(storeName as any, id as IDBValidKey)
+    await db.delete(storeName, id)
   }
 
   // Query by index
@@ -363,8 +380,8 @@ export class DBService {
     if (!isBrowser) return []
     this.checkBrowser()
     const db = await this.dbPromise!
-    const store = db.transaction(storeName as any).store
-    const index = store.index(indexName as any)
+    const store = db.transaction(storeName).store
+    const index = store.index(indexName)
     const result = await index.getAll(value)
     return result as unknown as T[]
   }
@@ -373,6 +390,70 @@ export class DBService {
   private getCurrentTimestamp(): string {
     // Return local time directly without trying to fetch from API
     return new Date().toISOString()
+  }
+
+  // Periksa apakah store sudah ada dalam database
+  async storeExists(storeName: string): Promise<boolean> {
+    if (!isBrowser) return false;
+    
+    try {
+      const db = await this.dbPromise!;
+      return db.objectStoreNames.contains(storeName);
+    } catch (error) {
+      console.error(`Error checking if store ${storeName} exists:`, error);
+      return false;
+    }
+  }
+
+  // Buat store baru jika belum ada
+  async createStore(
+    storeName: string,
+    keyPath: string = 'id',
+    options: { autoIncrement?: boolean; indexes?: { name: string; keyPath: string }[] } = { autoIncrement: true }
+  ): Promise<boolean> {
+    if (!isBrowser) return false;
+    
+    try {
+      // Cek apakah store sudah ada
+      if (await this.storeExists(storeName)) {
+        console.log(`Store ${storeName} already exists`);
+        return true;
+      }
+      
+      // Dapatkan versi DB saat ini
+      const db = await this.dbPromise!;
+      const currentVersion = db.version;
+      
+      // Tutup DB yang ada
+      db.close();
+      
+      // Buka kembali dengan versi baru dan upgrade
+      const newDB = await openDB<NuansaWeddingDB>("nuansa-wedding-db", currentVersion + 1, {
+        upgrade(db) {
+          // Buat store baru
+          const store = db.createObjectStore(storeName, {
+            keyPath,
+            autoIncrement: options.autoIncrement ?? true,
+          });
+          
+          // Tambahkan index jika ada
+          if (options.indexes && options.indexes.length > 0) {
+            for (const idx of options.indexes) {
+              store.createIndex(idx.name, idx.keyPath);
+            }
+          }
+          
+          console.log(`Created new store: ${storeName}`);
+        },
+      });
+      
+      // Update reference ke DB yang baru
+      this.dbPromise = Promise.resolve(newDB);
+      return true;
+    } catch (error) {
+      console.error(`Error creating store ${storeName}:`, error);
+      return false;
+    }
   }
 }
 

@@ -104,6 +104,8 @@ pre, code, p, span, h1, h2, h3, h4, h5, h6 {
   .responsive-card {
     width: 100%;
     box-sizing: border-box;
+    border-color: theme("colors.pink.100");
+    border-radius: theme("borderRadius.lg");
   }
   
   /* Utility untuk menghilangkan scrollbar tapi tetap bisa scroll */
@@ -319,6 +321,27 @@ pre, code, p, span, h1, h2, h3, h4, h5, h6 {
     display: inline-block;
     width: 100%;
     height: 100%;
+  }
+  
+  /* Class khusus untuk scrolling tabs di mobile */
+  .mobile-tabs-scroll {
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding-bottom: 4px !important;
+    flex-wrap: nowrap !important;
+  }
+  
+  .mobile-tabs-scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  .mobile-tabs-scroll > * {
+    flex-shrink: 0 !important;
+    min-width: max-content !important;
   }
 }
 

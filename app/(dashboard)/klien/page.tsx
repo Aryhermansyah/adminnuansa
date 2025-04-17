@@ -150,33 +150,26 @@ export default function KlienPage() {
 
   // Filter events berdasarkan tanggal yang dipilih
   const filteredEvents = useMemo(() => {
-    if (!events) return []
-    
     return events.filter((event) => {
-      if (!event.eventDate) return false
+      // Membuat objek Date dari string tanggal event
+      const eventDate = new Date(event.eventDate);
       
-      try {
-        // Pastikan kita bekerja dengan objek Date
-        const eventDate = new Date(event.eventDate)
-        
-        // Bandingkan tanggal dengan membandingkan string tanggal saja (YYYY-MM-DD)
-        const eventDateStr = eventDate.toISOString().split('T')[0]
-        const currentDateStr = currentDate.toISOString().split('T')[0]
-        
-        const dateMatch = eventDateStr === currentDateStr
-        
-        const serviceMatch = filterService === "all" || 
-          (event.services && event.services.some(service => service === filterService))
-          
-        const statusMatch = filterStatus === "all" || event.status === filterStatus
-        
-        return dateMatch && serviceMatch && statusMatch
-      } catch (error) {
-        console.error("Error comparing dates:", error)
-        return false
-      }
-    })
-  }, [events, currentDate, filterService, filterStatus])
+      // Reset waktu ke jam 00:00:00 untuk membandingkan hanya tanggal
+      eventDate.setHours(0, 0, 0, 0);
+      const currentDateCompare = new Date(currentDate);
+      currentDateCompare.setHours(0, 0, 0, 0);
+      
+      // Bandingkan tanggal tanpa waktu
+      const dateMatch = eventDate.getTime() === currentDateCompare.getTime();
+      
+      const serviceMatch = filterService === "all" || (event.services && Array.isArray(event.services) ? 
+        event.services.some(service => service === filterService) : 
+        false);
+      const statusMatch = filterStatus === "all" || event.status === filterStatus;
+      
+      return dateMatch && serviceMatch && statusMatch;
+    });
+  }, [events, currentDate, filterService, filterStatus]);
 
   // Fungsi untuk mendapatkan warna badge berdasarkan status
   const getStatusBadgeColor = (status: string) => {
@@ -550,6 +543,14 @@ export default function KlienPage() {
                                     <span className="truncate">{event.location}</span>
                                   </div>
                                 </div>
+                                <div className="mt-2">
+                                  <Link 
+                                    href={`/klien/${event.clientId}`}
+                                    className="text-xs font-medium text-pink-600 hover:text-pink-700 transition-colors"
+                                  >
+                                    Lihat Detail Acara
+                                  </Link>
+                                </div>
                               </div>
                             </CardContent>
                           </Card>
@@ -583,12 +584,12 @@ export default function KlienPage() {
             </div>
             <AlertCircle className="h-5 w-5 text-pink-500" />
           </CardHeader>
-          <CardContent className="p-4 overflow-auto" style={{ maxHeight: "calc(100vh - 700px)" }}>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <CardContent className="p-2 md:p-4">
+            <div className="flex flex-col gap-3 md:gap-4 md:grid md:grid-cols-2 lg:grid-cols-4">
               {filteredClients.length > 0 ? (
                 filteredClients.map((client) => (
                   <Card key={client.id} className={cn(
-                    "border-pink-100 overflow-hidden shadow-sm hover:shadow transition-all",
+                    "border-pink-100 overflow-hidden shadow-sm hover:shadow transition-all w-full",
                     isDateWithin30Days(new Date(client.eventDate)) && 
                     "ring-1 ring-pink-500"
                   )}>
